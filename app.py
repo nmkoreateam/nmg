@@ -72,35 +72,43 @@ div[data-testid="InputInstructions"] {{
 }}
 
 /* 2. 헤더 바 및 아이콘 제어 (점 세 개 메뉴는 보존, 부가 액션 아이콘 숨김) */
-header[data-testid="stHeader"] {{
+header[data-testid="stHeader"] {
     background-color: #111827 !important;
     z-index: 1000000 !important;
-}}
+}
 
+/* Share 버튼 및 Deploy 버튼 숨김 */
 .stDeployButton,
-header[data-testid="stHeader"] .stAppDeployButton {{
+header[data-testid="stHeader"] .stAppDeployButton {
     visibility: hidden !important;
     display: none !important;
-}}
+}
 
-header[data-testid="stHeader"] [data-testid="stHeaderActionElements"] {{
+/* 별, 연필, 깃허브, Share 링크 텍스트 및 액션 컨테이너 강제 숨김 */
+header[data-testid="stHeader"] [data-testid="stHeaderActionElements"],
+header[data-testid="stHeader"] [data-testid="stToolbarActions"],
+header[data-testid="stHeader"] .st-emotion-cache-15ecox0,
+header[data-testid="stHeader"] .st-emotion-cache-zq5wmm,
+header[data-testid="stHeader"] a:has(svg),
+header[data-testid="stHeader"] div:has(> a[href*="github.com"]) {
     visibility: hidden !important;
     display: none !important;
-}}
+}
 
+/* 점 세 개(⋮) 메뉴 버튼만 콕 집어서 단독 유지 */
 #MainMenu,
 header[data-testid="stHeader"] button[data-testid="baseButton-headerNoPadding"],
 div[data-testid="stSidebarCollapsedControl"],
-button[data-testid="stSidebarCollapseButton"] {{
+button[data-testid="stSidebarCollapseButton"] {
     visibility: visible !important;
     display: inline-flex !important;
     color: #E5E7EB !important;
-}}
+}
 
-header[data-testid="stHeader"] svg {{
+header[data-testid="stHeader"] button[data-testid="baseButton-headerNoPadding"] svg {
     fill: #E5E7EB !important;
     color: #E5E7EB !important;
-}}
+}
 
 /* 3. 사이드바 스타일 */
 section[data-testid="stSidebar"] {{
