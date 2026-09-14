@@ -52,26 +52,26 @@ if os.path.exists(DB_DEFAULT_PATH):
 else:
     updated_str = "DB Not Found"
 
-st.markdown(f"""
+header_html = """
 <style>
 /* 1. 글로벌 기본 다크 스타일 */
-html, body, [class*="css"], .stApp {{
+html, body, [class*="css"], .stApp {
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI",
                  Roboto, "Helvetica Neue", Arial, "Noto Sans KR",
                  "Noto Sans", "Apple SD Gothic Neo", "Malgun Gothic",
                  sans-serif !important;
     color: #E5E7EB !important;
     background-color: #111827 !important;
-}}
+}
 
 div[data-testid="stStatusWidget"],
 footer,
-div[data-testid="InputInstructions"] {{
+div[data-testid="InputInstructions"] {
     visibility: hidden !important;
     display: none !important;
-}}
+}
 
-/* 2. 헤더 바 및 아이콘 제어 (점 세 개 메뉴는 보존, 부가 액션 아이콘 숨김) */
+/* 2. 헤더 바 및 불필요한 아이콘 숨김 (점 세 개 메뉴만 단독 보존) */
 header[data-testid="stHeader"] {
     background-color: #111827 !important;
     z-index: 1000000 !important;
@@ -84,7 +84,7 @@ header[data-testid="stHeader"] .stAppDeployButton {
     display: none !important;
 }
 
-/* 별, 연필, 깃허브, Share 링크 텍스트 및 액션 컨테이너 강제 숨김 */
+/* 별, 연필, 깃허브 아이콘 컨테이너 강제 숨김 */
 header[data-testid="stHeader"] [data-testid="stHeaderActionElements"],
 header[data-testid="stHeader"] [data-testid="stToolbarActions"],
 header[data-testid="stHeader"] .st-emotion-cache-15ecox0,
@@ -95,7 +95,7 @@ header[data-testid="stHeader"] div:has(> a[href*="github.com"]) {
     display: none !important;
 }
 
-/* 점 세 개(⋮) 메뉴 버튼만 콕 집어서 단독 유지 */
+/* 점 세 개(⋮) 메뉴 버튼만 명시적 표시 */
 #MainMenu,
 header[data-testid="stHeader"] button[data-testid="baseButton-headerNoPadding"],
 div[data-testid="stSidebarCollapsedControl"],
@@ -111,11 +111,11 @@ header[data-testid="stHeader"] button[data-testid="baseButton-headerNoPadding"] 
 }
 
 /* 3. 사이드바 스타일 */
-section[data-testid="stSidebar"] {{
+section[data-testid="stSidebar"] {
     background-color: #1F2937 !important;
     border-right: 1px solid #374151 !important;
     z-index: 1000005 !important;
-}}
+}
 
 section[data-testid="stSidebar"] *,
 section[data-testid="stSidebar"] label,
@@ -123,12 +123,12 @@ section[data-testid="stSidebar"] span,
 section[data-testid="stSidebar"] p,
 section[data-testid="stSidebar"] h1,
 section[data-testid="stSidebar"] h2,
-section[data-testid="stSidebar"] h3 {{
+section[data-testid="stSidebar"] h3 {
     color: #D1D5DB !important;
-}}
+}
 
 /* 4. 중앙 타이틀 및 우측 상단 Date Updated */
-.custom-header-bar {{
+.custom-header-bar {
     position: fixed;
     top: 0;
     left: 0;
@@ -140,17 +140,17 @@ section[data-testid="stSidebar"] h3 {{
     justify-content: center;
     z-index: 1000001;
     pointer-events: none;
-}}
+}
 
-.custom-header-title-text {{
+.custom-header-title-text {
     font-size: 1.25rem;
     font-weight: 700;
     color: #E5E7EB;
     letter-spacing: -0.02em;
     pointer-events: auto;
-}}
+}
 
-.header-date-updated {{
+.header-date-updated {
     position: fixed;
     top: 14px;
     right: 60px;
@@ -159,21 +159,21 @@ section[data-testid="stSidebar"] h3 {{
     z-index: 1000005;
     pointer-events: none;
     font-family: inherit;
-}}
+}
 
-.block-container {{
+.block-container {
     padding-top: 4.5rem !important;
     padding-bottom: 1.5rem !important;
     padding-left: 1.5rem !important;
     padding-right: 1.5rem !important;
     max-width: 98% !important;
-}}
+}
 
 /* 5. 메인 검색 입력창 전폭 사용 */
 .main div[data-testid="stTextInput"],
 .main div[data-testid="stTextInput"] > div,
 .main div[data-baseweb="input"],
-.main div[data-baseweb="base-input"] {{
+.main div[data-baseweb="base-input"] {
     width: 100% !important;
     background-color: #374151 !important;
     border: 1px solid #4B5563 !important;
@@ -181,14 +181,14 @@ section[data-testid="stSidebar"] h3 {{
     height: 42px !important;
     padding: 0 !important;
     box-sizing: border-box !important;
-}}
+}
 
-.main div[data-baseweb="base-input"] {{
+.main div[data-baseweb="base-input"] {
     background-color: transparent !important;
     height: 100% !important;
-}}
+}
 
-.main .stTextInput input {{
+.main .stTextInput input {
     background-color: transparent !important;
     color: #E5E7EB !important;
     -webkit-text-fill-color: #E5E7EB !important;
@@ -198,33 +198,33 @@ section[data-testid="stSidebar"] h3 {{
     padding: 0 12px !important;
     border: none !important;
     box-shadow: none !important;
-}}
+}
 
-.main div[data-baseweb="input"]:focus-within {{
+.main div[data-baseweb="input"]:focus-within {
     border-color: #60A5FA !important;
-}}
+}
 
-.main .stTextInput input::placeholder {{
+.main .stTextInput input::placeholder {
     color: #9CA3AF !important;
     -webkit-text-fill-color: #9CA3AF !important;
-}}
+}
 
 /* 6. 드롭다운 */
 div[data-baseweb="select"],
-div[data-baseweb="select"] > div {{
+div[data-baseweb="select"] > div {
     background-color: #374151 !important;
     border-color: #4B5563 !important;
     color: #E5E7EB !important;
     border-radius: 0.375rem !important;
-}}
+}
 
-div[data-baseweb="select"] * {{
+div[data-baseweb="select"] * {
     color: #E5E7EB !important;
     -webkit-text-fill-color: #E5E7EB !important;
-}}
+}
 
 /* 7. 결과 테이블 스타일 */
-.freq-info-box {{
+.freq-info-box {
     background-color: #1F2937;
     border: 1px solid #374151;
     border-radius: 6px;
@@ -232,35 +232,35 @@ div[data-baseweb="select"] * {{
     color: #D1D5DB;
     font-size: 13px;
     display: inline-block;
-}}
+}
 
-.highlight-search {{
+.highlight-search {
     background-color: #FDE047;
     color: #000000 !important;
     -webkit-text-fill-color: #000000 !important;
     padding: 1px 3px;
     border-radius: 2px;
     font-weight: 600;
-}}
+}
 
-.highlight-keyword {{
+.highlight-keyword {
     background-color: #EAB308;
     color: #000000 !important;
     -webkit-text-fill-color: #000000 !important;
     padding: 1px 3px;
     border-radius: 2px;
     font-weight: 600;
-}}
+}
 
-.custom-table-container {{
+.custom-table-container {
     width: 100%;
     overflow-x: auto;
     border-radius: 6px;
     border: 1px solid #374151;
     margin-top: 10px;
-}}
+}
 
-.custom-table {{
+.custom-table {
     width: 100%;
     table-layout: fixed;
     border-collapse: collapse;
@@ -268,9 +268,9 @@ div[data-baseweb="select"] * {{
     color: #D1D5DB;
     font-size: 12.5px;
     line-height: 1.4;
-}}
+}
 
-.custom-table th {{
+.custom-table th {
     background-color: #111827;
     color: #E5E7EB;
     font-weight: 600;
@@ -278,21 +278,21 @@ div[data-baseweb="select"] * {{
     padding: 8px 10px;
     text-align: center;
     white-space: nowrap;
-}}
+}
 
-.custom-table td {{
+.custom-table td {
     border-bottom: 1px solid #374151;
     padding: 8px 10px;
     vertical-align: top;
     text-align: left;
     overflow-wrap: anywhere;
-}}
+}
 
-.custom-table tr:hover {{
+.custom-table tr:hover {
     background-color: #2D3748;
-}}
+}
 
-.col-vbcp {{
+.col-vbcp {
     width: 7%;
     font-size: 11.5px;
     font-family: inherit !important;
@@ -300,42 +300,43 @@ div[data-baseweb="select"] * {{
     text-align: center !important;
     white-space: normal !important;
     word-break: break-all !important;
-}}
+}
 
-.col-main {{
+.col-main {
     width: 28%;
     min-width: 0;
     font-size: 13px;
     color: #E5E7EB;
-}}
+}
 
-.col-sub {{
+.col-sub {
     width: 11%;
     font-size: 11.5px;
     color: #9CA3AF;
-}}
+}
 
-.col-link {{
+.col-link {
     width: 5%;
     font-size: 11.5px;
     text-align: center !important;
-}}
+}
 
-.col-link a {{
+.col-link a {
     color: #60A5FA;
     text-decoration: underline;
     font-weight: 500;
-}}
+}
 </style>
 
 <div class="custom-header-bar">
     <div class="custom-header-title-text">NMG Search System</div>
 </div>
 <div class="header-date-updated">
-    Date Updated: <strong>{updated_str}</strong>
+    Date Updated: <strong>__UPDATED_STR__</strong>
 </div>
-""", unsafe_allow_html=True)
+""".replace("__UPDATED_STR__", updated_str)
 
+st.markdown(header_html, unsafe_allow_html=True)
 
 # =========================================================
 # 3. Session State
