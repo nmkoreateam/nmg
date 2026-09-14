@@ -1,10 +1,12 @@
 """
-NMG SQLite3 Streamlit Search Application (v5.2)
+NMG SQLite3 Streamlit Search Application (v5.4)
 --------------------------------------------------------------------
-1. 사이드바의 DB 파일 경로 입력창 제거 (UI 겹침 방지 및 자동 ./nmg.db 고정)
-2. 우측 상단 Deploy 버튼 복원
-3. Deploy 버튼 상단에 DB 파일 최종 갱신 일시(Date Updated) 자동 표시
-4. c/C 접두사 무시, Steps 계단 및 모든 도서 안정 검색 지원
+1. 불필요한 언어 선택 메뉴 제거 (en, ko 통합 자동 검색)
+2. '대소문자 구분 (Case-Sensitive)' 옵션 추가
+3. '단어 단위 일치 (Whole Words Only)' 옵션 추가
+4. 암호 입력창 제거 (직접 메인 진입)
+5. 우측 상단 점 세 개(⋮) 메뉴 유지, 불필요한 부가 아이콘 숨김
+6. 엑셀/TSV 다운로드 버튼 비활성화
 """
 
 import os
@@ -34,7 +36,8 @@ if not os.path.exists("./nmg.db") and os.path.exists("./nmg.db.part1"):
 st.set_page_config(
     page_title="NMG Search System (Streamlit)",
     page_icon="text-search.svg",
-    layout="wide"
+    layout="wide",
+    initial_sidebar_state="expanded"
 )
 
 
@@ -42,7 +45,6 @@ st.set_page_config(
 # 2. Custom CSS & Header Layout
 # =========================================================
 
-# nmg.db 파일 최종 수정 일시 확인
 DB_DEFAULT_PATH = "./nmg.db"
 if os.path.exists(DB_DEFAULT_PATH):
     mtime = os.path.getmtime(DB_DEFAULT_PATH)
@@ -52,13 +54,14 @@ else:
 
 st.markdown(f"""
 <style>
-/* 1. 글로벌 기본 스타일 */
+/* 1. 글로벌 기본 다크 스타일 */
 html, body, [class*="css"], .stApp {{
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI",
                  Roboto, "Helvetica Neue", Arial, "Noto Sans KR",
                  "Noto Sans", "Apple SD Gothic Neo", "Malgun Gothic",
                  sans-serif !important;
     color: #E5E7EB !important;
+    background-color: #111827 !important;
 }}
 
 div[data-testid="stStatusWidget"],
@@ -68,33 +71,38 @@ div[data-testid="InputInstructions"] {{
     display: none !important;
 }}
 
-/* Deploy 버튼 복원 및 상단 헤더 보존 */
+/* 2. 헤더 바 및 아이콘 제어 (점 세 개 메뉴는 보존, 부가 액션 아이콘 숨김) */
 header[data-testid="stHeader"] {{
     background-color: #111827 !important;
     z-index: 1000000 !important;
 }}
 
-.stDeployButton {{
-    visibility: visible !important;
-    display: inline-flex !important;
-    margin-top: 14px !important;
+.stDeployButton,
+header[data-testid="stHeader"] .stAppDeployButton {{
+    visibility: hidden !important;
+    display: none !important;
 }}
 
-header[data-testid="stHeader"] button,
+header[data-testid="stHeader"] [data-testid="stHeaderActionElements"] {{
+    visibility: hidden !important;
+    display: none !important;
+}}
+
+#MainMenu,
+header[data-testid="stHeader"] button[data-testid="baseButton-headerNoPadding"],
 div[data-testid="stSidebarCollapsedControl"],
-button[data-testid="stSidebarCollapseButton"],
-button[data-testid="baseButton-headerNoPadding"] {{
-    z-index: 1000010 !important;
-    color: #E5E7EB !important;
+button[data-testid="stSidebarCollapseButton"] {{
     visibility: visible !important;
     display: inline-flex !important;
+    color: #E5E7EB !important;
 }}
 
-.stApp {{
-    background-color: #111827 !important;
+header[data-testid="stHeader"] svg {{
+    fill: #E5E7EB !important;
+    color: #E5E7EB !important;
 }}
 
-/* 2. 사이드바 스타일 */
+/* 3. 사이드바 스타일 */
 section[data-testid="stSidebar"] {{
     background-color: #1F2937 !important;
     border-right: 1px solid #374151 !important;
@@ -111,7 +119,7 @@ section[data-testid="stSidebar"] h3 {{
     color: #D1D5DB !important;
 }}
 
-/* 3. 중앙 타이틀 및 우측 상단 Date Updated */
+/* 4. 중앙 타이틀 및 우측 상단 Date Updated */
 .custom-header-bar {{
     position: fixed;
     top: 0;
@@ -136,8 +144,8 @@ section[data-testid="stSidebar"] h3 {{
 
 .header-date-updated {{
     position: fixed;
-    top: 6px;
-    right: 140px;
+    top: 14px;
+    right: 60px;
     font-size: 11px;
     color: #9CA3AF;
     z-index: 1000005;
@@ -153,7 +161,7 @@ section[data-testid="stSidebar"] h3 {{
     max-width: 98% !important;
 }}
 
-/* 4. 메인 검색 입력창 100% 전폭 사용 (사이드바 침범 방지) */
+/* 5. 메인 검색 입력창 전폭 사용 */
 .main div[data-testid="stTextInput"],
 .main div[data-testid="stTextInput"] > div,
 .main div[data-baseweb="input"],
@@ -193,7 +201,7 @@ section[data-testid="stSidebar"] h3 {{
     -webkit-text-fill-color: #9CA3AF !important;
 }}
 
-/* 5. 드롭다운 */
+/* 6. 드롭다운 */
 div[data-baseweb="select"],
 div[data-baseweb="select"] > div {{
     background-color: #374151 !important;
@@ -205,29 +213,6 @@ div[data-baseweb="select"] > div {{
 div[data-baseweb="select"] * {{
     color: #E5E7EB !important;
     -webkit-text-fill-color: #E5E7EB !important;
-}}
-
-/* 6. 다운로드 버튼 스타일 */
-div.stDownloadButton {{
-    width: 100% !important;
-    background-color: transparent !important;
-}}
-
-div.stDownloadButton > button {{
-    width: 100% !important;
-    border: 1px solid #4B5563 !important;
-    border-radius: 0.375rem !important;
-    height: 42px !important;
-    background-color: #374151 !important;
-    background: #374151 !important;
-    color: #9CA3AF !important;
-    box-shadow: none !important;
-}}
-
-div.stDownloadButton > button * {{
-    color: #9CA3AF !important;
-    -webkit-text-fill-color: #9CA3AF !important;
-    font-size: 13px !important;
 }}
 
 /* 7. 결과 테이블 스타일 */
@@ -427,14 +412,22 @@ def sanitize_regex_pattern(pattern: str) -> str:
 # 6. Database Connection
 # =========================================================
 
-def get_db_connection(db_path: str):
+def get_db_connection(db_path: str, case_sensitive: bool = False):
     conn = sqlite3.connect(db_path)
+    
+    # Simple LIKE 검색 시 대소문자 구분 설정 반영
+    if case_sensitive:
+        conn.execute("PRAGMA case_sensitive_like = ON;")
+    else:
+        conn.execute("PRAGMA case_sensitive_like = OFF;")
+
+    flags = 0 if case_sensitive else re.IGNORECASE
 
     def regexp(expr, item):
         if item is None or expr is None or expr == "":
             return False
         try:
-            return re.search(str(expr), str(item), re.IGNORECASE) is not None
+            return re.search(str(expr), str(item), flags) is not None
         except Exception:
             return False
 
@@ -450,31 +443,40 @@ def execute_search(
     db_path: str,
     query_str: str,
     search_type: str,
-    search_field: str,
+    case_sensitive: bool,
+    whole_words: bool,
     limit_count
-) -> tuple[pd.DataFrame, str]:
+) -> tuple[pd.DataFrame, str, str]:
 
     range_cond, clean_query, _ = extract_vbc_conditions(query_str)
 
     conditions = []
     params = []
+    effective_pattern = ""
 
     if range_cond:
         conditions.append(range_cond)
 
-    if search_type == "simple":
-        if clean_query:
-            conditions.append("(bt.en LIKE ? ESCAPE '\\' OR bt.ko LIKE ? ESCAPE '\\')")
-            escaped = f"%{escape_like(clean_query)}%"
-            params.extend([escaped, escaped])
-    else:
-        clean_query = sanitize_regex_pattern(clean_query)
-        if clean_query:
+    if clean_query:
+        # 단어 단위 일치(Whole Words Only) 옵션 처리
+        if whole_words:
+            base_pattern = re.escape(clean_query) if search_type == "simple" else sanitize_regex_pattern(clean_query)
+            effective_pattern = rf"\b{base_pattern}\b"
             conditions.append("(bt.en REGEXP ? OR bt.ko REGEXP ?)")
-            params.extend([clean_query, clean_query])
+            params.extend([effective_pattern, effective_pattern])
+        else:
+            if search_type == "simple":
+                effective_pattern = re.escape(clean_query)
+                conditions.append("(bt.en LIKE ? ESCAPE '\\' OR bt.ko LIKE ? ESCAPE '\\')")
+                escaped = f"%{escape_like(clean_query)}%"
+                params.extend([escaped, escaped])
+            else:
+                effective_pattern = sanitize_regex_pattern(clean_query)
+                conditions.append("(bt.en REGEXP ? OR bt.ko REGEXP ?)")
+                params.extend([effective_pattern, effective_pattern])
 
     if not conditions:
-        return pd.DataFrame(), ""
+        return pd.DataFrame(), "", ""
 
     where_clause = " AND ".join(conditions)
     limit_sql = f"LIMIT {int(limit_count)}" if limit_count is not None else ""
@@ -569,13 +571,13 @@ def execute_search(
         {limit_sql}
     """
 
-    conn = get_db_connection(db_path)
+    conn = get_db_connection(db_path, case_sensitive=case_sensitive)
     try:
         df = pd.read_sql_query(sql, conn, params=tuple(params))
     finally:
         conn.close()
 
-    return clean_dataframe_nulls(df), clean_query
+    return clean_dataframe_nulls(df), clean_query, effective_pattern
 
 
 # =========================================================
@@ -627,11 +629,12 @@ def merge_ranges(ranges: list[tuple[int, int]]) -> list[tuple[int, int]]:
     return merged
 
 
-def find_regex_ranges(text: str, pattern: str) -> list[tuple[int, int]]:
+def find_regex_ranges(text: str, pattern: str, case_sensitive: bool = False) -> list[tuple[int, int]]:
     if not text or not pattern:
         return []
+    flags = 0 if case_sensitive else re.IGNORECASE
     try:
-        regex = re.compile(pattern, re.IGNORECASE)
+        regex = re.compile(pattern, flags)
     except re.error:
         return []
 
@@ -700,40 +703,52 @@ def get_keyword_ranges(text: str, keywords: list[str]) -> tuple[list[tuple[int, 
 
 def apply_highlights_and_format(
     df: pd.DataFrame,
-    search_query: str,
-    search_type: str,
+    search_pattern: str,
+    case_sensitive: bool,
     highlight_keywords_str: str
 ):
     df_display = clean_dataframe_nulls(df.copy())
     freq_map = {}
 
-    search_pattern = ""
-    if search_query:
-        search_pattern = re.escape(search_query) if search_type == "simple" else sanitize_regex_pattern(search_query)
-
     keywords = [k.strip() for k in (highlight_keywords_str or "").split(",") if k.strip()]
+
+    # 각 행마다 추가 키워드가 총 몇 번 나왔는지 세는 카운터 열 추가
+    row_keyword_counts = [0] * len(df_display)
 
     for column in ["Source", "번역문"]:
         if column not in df_display.columns:
             continue
 
-        def format_value(value):
+        formatted_values = []
+        for idx, value in enumerate(df_display[column]):
             text = safe_text(value)
             if not text:
-                return ""
+                formatted_values.append("")
+                continue
 
-            search_ranges = find_regex_ranges(text, search_pattern) if search_pattern else []
+            search_ranges = find_regex_ranges(text, search_pattern, case_sensitive) if search_pattern else []
             keyword_ranges, keyword_freq = get_keyword_ranges(text, keywords)
 
+            # 행별 추가 키워드 매칭 개수 누적
+            match_count = sum(keyword_freq.values())
+            row_keyword_counts[idx] += match_count
+
+            # 전체 키워드 빈도 합산
             for key, count in keyword_freq.items():
                 freq_map[key] = freq_map.get(key, 0) + count
 
-            return render_highlighted_text(text, search_ranges, keyword_ranges)
+            formatted_values.append(render_highlighted_text(text, search_ranges, keyword_ranges))
 
-        df_display[column] = df_display[column].apply(format_value)
+        df_display[column] = formatted_values
 
     if "Link" in df_display.columns:
         df_display["Link"] = df_display["Link"].apply(parse_links_to_html)
+
+    # 추가 하이라이트 키워드가 입력된 경우: 매칭 횟수가 많은 행을 맨 위로 정렬 (내림차순)
+    if keywords:
+        df_display["_kw_priority"] = row_keyword_counts
+        # kind='stable'을 주어 등장 횟수가 같거나 0인 행들은 원래 책·장·절 순서 유지
+        df_display = df_display.sort_values(by="_kw_priority", ascending=False, kind="stable").drop(columns=["_kw_priority"])
 
     sorted_freq = sorted(freq_map.items(), key=lambda x: x[1], reverse=True)
     freq_summary = ", ".join(f"{kw}({cnt})" for kw, cnt in sorted_freq)
@@ -780,21 +795,18 @@ def generate_custom_table_html(df: pd.DataFrame) -> str:
 def main():
     st.sidebar.header("⚙️ 검색 설정")
 
-    # DB 경로는 기본값으로 고정 (입력창 제거로 사이드바 겹침 현상 원천 해결)
     db_path = DB_DEFAULT_PATH
 
-    search_field = st.sidebar.selectbox(
-        "검색 필드 (기본 언어)",
-        options=["en", "ko"],
-        format_func=lambda x: "English" if x == "en" else "한국어"
+    search_type = st.sidebar.radio(
+        "검색 모드",
+        options=["regex", "simple"],
+        index=0,
+        format_func=lambda x: "Regex (정규식)" if x == "regex" else "Simple (기본)"
     )
 
-    search_type = st.sidebar.radio(
-        "검색 옵션",
-        options=["simple", "regex"],
-        index=1,
-        format_func=lambda x: "Simple (기본)" if x == "simple" else "Regex (정규식)"
-    )
+    # 검색 세부 옵션 체크박스
+    case_sensitive = st.sidebar.checkbox("대소문자 구분 (Case-Sensitive)", value=False)
+    whole_words = st.sidebar.checkbox("단어 단위 일치 (Whole Words Only)", value=False)
 
     limit_option = st.sidebar.selectbox(
         "최대 검색 제한",
@@ -825,8 +837,20 @@ def main():
     if query_input:
         with st.spinner("DB 데이터 조회 중..."):
             try:
-                raw_df, clean_query = execute_search(db_path, query_input, search_type, search_field, limit_count)
-                display_df, freq_summary = apply_highlights_and_format(raw_df, clean_query, search_type, highlight_input)
+                raw_df, clean_query, search_pattern = execute_search(
+                    db_path,
+                    query_input,
+                    search_type,
+                    case_sensitive,
+                    whole_words,
+                    limit_count
+                )
+                display_df, freq_summary = apply_highlights_and_format(
+                    raw_df,
+                    search_pattern,
+                    case_sensitive,
+                    highlight_input
+                )
 
                 result_cnt = len(raw_df)
                 cnt_text = f"📊 총 {result_cnt:,} 건 검색됨"
@@ -840,33 +864,6 @@ def main():
                 with col_freq:
                     if freq_summary:
                         st.markdown(f'<div class="freq-info-box"><span style="color:#9CA3AF; font-weight:600;">키워드:</span> {html.escape(freq_summary)}</div>', unsafe_allow_html=True)
-
-                if not raw_df.empty:
-                    col_dl1, col_dl2, _ = st.columns([3, 3, 4])
-
-                    with col_dl1:
-                        excel_buffer = io.BytesIO()
-                        with pd.ExcelWriter(excel_buffer, engine="openpyxl") as writer:
-                            raw_df.to_excel(writer, index=False, sheet_name="SearchResults")
-                        excel_buffer.seek(0)
-
-                        st.download_button(
-                            label="📥 엑셀(.xlsx) 다운로드",
-                            data=excel_buffer,
-                            file_name="SearchResults.xlsx",
-                            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                            use_container_width=True
-                        )
-
-                    with col_dl2:
-                        tsv_data = raw_df.to_csv(sep="\t", index=False).encode("utf-8-sig")
-                        st.download_button(
-                            label="📄 TSV(.tsv) 다운로드",
-                            data=tsv_data,
-                            file_name="SearchResults.tsv",
-                            mime="text/tab-separated-values",
-                            use_container_width=True
-                        )
 
                 table_html = generate_custom_table_html(display_df)
                 st.write(table_html, unsafe_allow_html=True)
