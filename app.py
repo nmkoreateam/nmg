@@ -44,6 +44,8 @@ st.set_page_config(
 # 2. Custom CSS & Header Layout
 # =========================================================
 
+import streamlit.components.v1 as components
+
 DB_DEFAULT_PATH = "./nmg.db"
 if os.path.exists(DB_DEFAULT_PATH):
     mtime = os.path.getmtime(DB_DEFAULT_PATH)
@@ -70,57 +72,37 @@ div[data-testid="InputInstructions"] {
     display: none !important;
 }
 
-/* 2. 상단 헤더 바 및 불필요한 아이콘 숨김 */
+/* 2. 상단 헤더 바 기본 스타일 */
 header[data-testid="stHeader"] {
     background-color: #111827 !important;
     z-index: 1000000 !important;
 }
 
-/* 상단: Share 버튼, Deploy 버튼, 깃허브, 별, 연필 등 액션 컨테이너 전부 숨김 */
+/* 상단 불필요한 요소 숨김 (Share, Deploy, GitHub, Star, Edit 등) */
 .stDeployButton,
 header[data-testid="stHeader"] .stAppDeployButton,
 header[data-testid="stHeader"] [data-testid="stHeaderActionElements"],
 header[data-testid="stHeader"] [data-testid="stToolbarActions"],
 header[data-testid="stHeader"] [data-testid="stToolbar"],
-header[data-testid="stHeader"] .st-emotion-cache-15ecox0,
-header[data-testid="stHeader"] .st-emotion-cache-zq5wmm,
 header[data-testid="stHeader"] a[href*="github.com"],
-header[data-testid="stHeader"] div:has(> a[href*="github.com"]),
-header[data-testid="stHeader"] button[aria-label="Share"],
-header[data-testid="stHeader"] button[title*="Share"],
-header[data-testid="stHeader"] button:not(#MainMenu):not([data-testid="baseButton-headerNoPadding"]):not([data-testid="stSidebarCollapseButton"]) {
+header[data-testid="stHeader"] div:has(> a[href*="github.com"]) {
     visibility: hidden !important;
     display: none !important;
 }
 
-/* 하단: 호스팅 종이배 뱃지, 도트 프로필(관리 뷰어), 상태 위젯 전부 숨김 */
-footer,
-div[data-testid="manage-app-button"],
-div[data-testid="stConnectionStatus"],
-div[data-testid="stStatusWidget"],
-[class*="viewerBadge"],
-[class*="manageApp"],
-[class*="StatusWidget"],
-a[href*="streamlit.app"],
-a[href*="streamlit.io"],
-div:has(> a[href*="streamlit.io"]),
-div:has(> a[href*="streamlit.app"]) {
-    visibility: hidden !important;
-    display: none !important;
-}
-
-/* 점 세 개(⋮) 및 사이드바 화살표(>) 단독 보존 */
-#MainMenu,
-header[data-testid="stHeader"] #MainMenu,
+/* 사이드바 열기 버튼(>)과 점 세 개(⋮) 메뉴만 최상위로 강제 노출 */
 div[data-testid="stSidebarCollapsedControl"],
 div[data-testid="collapsedControl"],
 button[data-testid="stSidebarCollapseButton"],
-header[data-testid="stHeader"] button[data-testid="baseButton-headerNoPadding"] {
+#MainMenu,
+header[data-testid="stHeader"] button[data-testid="baseButton-headerNoPadding"],
+header[data-testid="stHeader"] button#MainMenu {
     visibility: visible !important;
     display: inline-flex !important;
     z-index: 2000000 !important;
     color: #E5E7EB !important;
     pointer-events: auto !important;
+    opacity: 1 !important;
 }
 
 div[data-testid="stSidebarCollapsedControl"] svg,
@@ -128,7 +110,10 @@ div[data-testid="collapsedControl"] svg,
 header[data-testid="stHeader"] svg {
     fill: #E5E7EB !important;
     color: #E5E7EB !important;
+    width: 1.5rem !important;
+    height: 1.5rem !important;
 }
+
 /* 3. 사이드바 스타일 */
 section[data-testid="stSidebar"] {
     background-color: #1F2937 !important;
@@ -146,7 +131,7 @@ section[data-testid="stSidebar"] h3 {
     color: #D1D5DB !important;
 }
 
-/* 4. 중앙 타이틀: 좌우 60px 여백을 두어 화살표(>)와 점3개(⋮)를 가리지 않도록 설정 */
+/* 4. 중앙 타이틀: 좌우 60px 여백으로 화살표와 메뉴 보호 */
 .custom-header-bar {
     position: fixed;
     top: 0;
@@ -356,6 +341,49 @@ div[data-baseweb="select"] * {
 """.replace("__UPDATED_STR__", updated_str)
 
 st.markdown(header_html, unsafe_allow_html=True)
+
+# Streamlit Cloud 외부 호스트 프레임의 우측 하단 뱃지 및 상단 불필요한 버튼 강제 제거 스크립트
+components.html("""
+<script>
+    function cleanStreamlitCloudUI() {
+        try {
+            const parentDoc = window.parent.document;
+            if (!parentDoc) return;
+
+            // 1. 우측 하단 종이배 뱃지 및 프로필/관리 뷰어 버튼 제거
+            const bottomBadges = parentDoc.querySelectorAll('[class*="viewerBadge"], [class*="manageApp"], div[data-testid="manage-app-button"], div[data-testid="stStatusWidget"], .viewerBadge_container__1QSob');
+            bottomBadges.forEach(el => {
+                el.style.display = 'none';
+                el.remove();
+            });
+
+            // 2. 상단 액션 바 (Share, 별, 연필, GitHub) 제거
+            const headerActions = parentDoc.querySelectorAll('[data-testid="stHeaderActionElements"], [data-testid="stToolbarActions"], .stAppDeployButton');
+            headerActions.forEach(el => {
+                el.style.display = 'none';
+                el.remove();
+            });
+
+            // 3. 사이드바 화살표(>) 확실하게 강제 표시
+            const collapsedControls = parentDoc.querySelectorAll('div[data-testid="stSidebarCollapsedControl"], button[data-testid="stSidebarCollapseButton"]');
+            collapsedControls.forEach(el => {
+                el.style.visibility = 'visible';
+                el.style.display = 'inline-flex';
+                el.style.opacity = '1';
+                el.style.zIndex = '2000000';
+            });
+        } catch (e) {
+            // 크로스 도메인 이슈 발생 시 무시
+        }
+    }
+
+    // 페이지 로딩 완료 및 동적 생성 타이밍에 맞춰 주기적으로 실행
+    cleanStreamlitCloudUI();
+    setInterval(cleanStreamlitCloudUI, 500);
+</script>
+""", height=0, width=0)
+
+
 # =========================================================
 # 3. Session State
 # =========================================================
