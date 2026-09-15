@@ -1,18 +1,12 @@
 """
-NMG SQLite3 Streamlit Search Application (v5.4)
+NMG SQLite3 Streamlit Search Application (v5.5 Stable)
 --------------------------------------------------------------------
-1. 불필요한 언어 선택 메뉴 제거 (en, ko 통합 자동 검색)
-2. '대소문자 구분 (Case-Sensitive)' 옵션 추가
-3. '단어 단위 일치 (Whole Words Only)' 옵션 추가
-4. 암호 입력창 제거 (직접 메인 진입)
-5. 우측 상단 점 세 개(⋮) 메뉴 유지, 불필요한 부가 아이콘 숨김
-6. 엑셀/TSV 다운로드 버튼 비활성화
+- 안정적인 DB 병합 및 안전 검사
+- 완전 무결한 다크모드 및 사이드바 토글 복원
 """
 
 import os
 import re
-import io
-import time
 import sqlite3
 import html
 from datetime import datetime
@@ -21,13 +15,20 @@ from urllib.parse import urlparse
 import pandas as pd
 import streamlit as st
 
-# 분할 업로드된 DB 파일이 있으면 자동으로 하나로 합침
-if not os.path.exists("./nmg.db") and os.path.exists("./nmg.db.part1"):
-    with open("./nmg.db", "wb") as f_out:
-        for part in ["./nmg.db.part1", "./nmg.db.part2"]:
-            if os.path.exists(part):
-                with open(part, "rb") as f_in:
-                    f_out.write(f_in.read())
+# =========================================================
+# 0. Safe DB Reassembly
+# =========================================================
+
+DB_DEFAULT_PATH = "./nmg.db"
+
+# DB 파일이 없거나 크기가 0이면 파트 파일에서 온전하게 다시 병합
+if (not os.path.exists(DB_DEFAULT_PATH) or os.path.getsize(DB_DEFAULT_PATH) == 0):
+    if os.path.exists("./nmg.db.part1"):
+        with open(DB_DEFAULT_PATH, "wb") as f_out:
+            for part in ["./nmg.db.part1", "./nmg.db.part2"]:
+                if os.path.exists(part):
+                    with open(part, "rb") as f_in:
+                        f_out.write(f_in.read())
 
 # =========================================================
 # 1. Page Configuration
@@ -37,16 +38,13 @@ st.set_page_config(
     page_title="NMG Search System (Streamlit)",
     page_icon="text-search.svg",
     layout="wide",
-    initial_sidebar_state="collapsed"   # 기존 "expanded"에서 "collapsed"로 변경
+    initial_sidebar_state="collapsed"
 )
 
 # =========================================================
 # 2. Custom CSS & Header Layout
 # =========================================================
 
-import streamlit.components.v1 as components
-
-DB_DEFAULT_PATH = "./nmg.db"
 if os.path.exists(DB_DEFAULT_PATH):
     mtime = os.path.getmtime(DB_DEFAULT_PATH)
     updated_str = datetime.fromtimestamp(mtime).strftime('%Y-%m-%d %H:%M:%S')
@@ -55,7 +53,7 @@ else:
 
 header_html = """
 <style>
-/* 1. 글로벌 기본 다크 스타일 */
+/* 글로벌 다크 스타일 */
 html, body, [class*="css"], .stApp {
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI",
                  Roboto, "Helvetica Neue", Arial, "Noto Sans KR",
@@ -68,81 +66,65 @@ html, body, [class*="css"], .stApp {
 div[data-testid="stStatusWidget"],
 footer,
 div[data-testid="InputInstructions"] {
-    visibility: hidden !important;
     display: none !important;
 }
 
-/* 2. 상단 헤더 바 기본 스타일 */
+/* 상단 헤더 바 */
 header[data-testid="stHeader"] {
     background-color: #111827 !important;
-    z-index: 1000000 !important;
+    z-index: 1000 !important;
 }
 
-/* 상단 불필요한 요소 숨김 (Share, Deploy, GitHub, Star, Edit 등) */
+/* 상단 부가 요소 숨김 */
 .stDeployButton,
 header[data-testid="stHeader"] .stAppDeployButton,
 header[data-testid="stHeader"] [data-testid="stHeaderActionElements"],
 header[data-testid="stHeader"] [data-testid="stToolbarActions"],
-header[data-testid="stHeader"] [data-testid="stToolbar"],
-header[data-testid="stHeader"] a[href*="github.com"],
-header[data-testid="stHeader"] div:has(> a[href*="github.com"]) {
-    visibility: hidden !important;
+header[data-testid="stHeader"] [data-testid="stToolbar"] {
     display: none !important;
 }
 
-/* 사이드바 열기 버튼(>)과 점 세 개(⋮) 메뉴만 최상위로 강제 노출 */
+/* 사이드바 열기(>) 화살표 및 점3개(⋮) 버튼 강제 표시 */
 div[data-testid="stSidebarCollapsedControl"],
 div[data-testid="collapsedControl"],
 button[data-testid="stSidebarCollapseButton"],
 #MainMenu,
-header[data-testid="stHeader"] button[data-testid="baseButton-headerNoPadding"],
-header[data-testid="stHeader"] button#MainMenu {
-    visibility: visible !important;
+header[data-testid="stHeader"] button {
     display: inline-flex !important;
-    z-index: 2000000 !important;
+    visibility: visible !important;
+    z-index: 2000 !important;
     color: #E5E7EB !important;
     pointer-events: auto !important;
-    opacity: 1 !important;
 }
 
 div[data-testid="stSidebarCollapsedControl"] svg,
-div[data-testid="collapsedControl"] svg,
 header[data-testid="stHeader"] svg {
     fill: #E5E7EB !important;
     color: #E5E7EB !important;
-    width: 1.5rem !important;
-    height: 1.5rem !important;
 }
 
-/* 3. 사이드바 스타일 */
+/* 사이드바 배경 */
 section[data-testid="stSidebar"] {
     background-color: #1F2937 !important;
     border-right: 1px solid #374151 !important;
-    z-index: 1000005 !important;
 }
 
-section[data-testid="stSidebar"] *,
-section[data-testid="stSidebar"] label,
-section[data-testid="stSidebar"] span,
-section[data-testid="stSidebar"] p,
-section[data-testid="stSidebar"] h1,
-section[data-testid="stSidebar"] h2,
-section[data-testid="stSidebar"] h3 {
+section[data-testid="stSidebar"] * {
     color: #D1D5DB !important;
 }
 
-/* 4. 중앙 타이틀: 좌우 60px 여백으로 화살표와 메뉴 보호 */
+/* 중앙 타이틀 */
 .custom-header-bar {
     position: fixed;
     top: 0;
-    left: 60px;
-    right: 60px;
+    left: 80px;
+    right: 80px;
     height: 3.5rem;
     background-color: transparent;
     display: flex;
     align-items: center;
     justify-content: center;
-    z-index: 1000001;
+    z-index: 1001;
     pointer-events: none;
 }
 
@@ -157,10 +139,10 @@ section[data-testid="stSidebar"] h3 {
 .header-date-updated {
     position: fixed;
     top: 14px;
-    right: 55px;
+    right: 60px;
     font-size: 11px;
     color: #9CA3AF;
-    z-index: 1000002;
+    z-index: 1002;
     pointer-events: none;
     font-family: inherit;
 }
@@ -173,7 +155,7 @@ section[data-testid="stSidebar"] h3 {
     max-width: 98% !important;
 }
 
-/* 5. 메인 검색 입력창 100% 전폭 사용 */
+/* 검색 입력창 */
 .main div[data-testid="stTextInput"],
 .main div[data-testid="stTextInput"] > div,
 .main div[data-baseweb="input"],
@@ -213,7 +195,7 @@ section[data-testid="stSidebar"] h3 {
     -webkit-text-fill-color: #9CA3AF !important;
 }
 
-/* 6. 드롭다운 */
+/* 드롭다운 */
 div[data-baseweb="select"],
 div[data-baseweb="select"] > div {
     background-color: #374151 !important;
@@ -227,7 +209,7 @@ div[data-baseweb="select"] * {
     -webkit-text-fill-color: #E5E7EB !important;
 }
 
-/* 7. 결과 테이블 스타일 */
+/* 하이라이트 및 테이블 */
 .freq-info-box {
     background-color: #1F2937;
     border: 1px solid #374151;
@@ -299,16 +281,13 @@ div[data-baseweb="select"] * {
 .col-vbcp {
     width: 7%;
     font-size: 11.5px;
-    font-family: inherit !important;
     color: #9CA3AF;
     text-align: center !important;
-    white-space: normal !important;
     word-break: break-all !important;
 }
 
 .col-main {
     width: 28%;
-    min-width: 0;
     font-size: 13px;
     color: #E5E7EB;
 }
@@ -342,48 +321,6 @@ div[data-baseweb="select"] * {
 
 st.markdown(header_html, unsafe_allow_html=True)
 
-# Streamlit Cloud 외부 호스트 프레임의 우측 하단 뱃지 및 상단 불필요한 버튼 강제 제거 스크립트
-components.html("""
-<script>
-    function cleanStreamlitCloudUI() {
-        try {
-            const parentDoc = window.parent.document;
-            if (!parentDoc) return;
-
-            // 1. 우측 하단 종이배 뱃지 및 프로필/관리 뷰어 버튼 제거
-            const bottomBadges = parentDoc.querySelectorAll('[class*="viewerBadge"], [class*="manageApp"], div[data-testid="manage-app-button"], div[data-testid="stStatusWidget"], .viewerBadge_container__1QSob');
-            bottomBadges.forEach(el => {
-                el.style.display = 'none';
-                el.remove();
-            });
-
-            // 2. 상단 액션 바 (Share, 별, 연필, GitHub) 제거
-            const headerActions = parentDoc.querySelectorAll('[data-testid="stHeaderActionElements"], [data-testid="stToolbarActions"], .stAppDeployButton');
-            headerActions.forEach(el => {
-                el.style.display = 'none';
-                el.remove();
-            });
-
-            // 3. 사이드바 화살표(>) 확실하게 강제 표시
-            const collapsedControls = parentDoc.querySelectorAll('div[data-testid="stSidebarCollapsedControl"], button[data-testid="stSidebarCollapseButton"]');
-            collapsedControls.forEach(el => {
-                el.style.visibility = 'visible';
-                el.style.display = 'inline-flex';
-                el.style.opacity = '1';
-                el.style.zIndex = '2000000';
-            });
-        } catch (e) {
-            // 크로스 도메인 이슈 발생 시 무시
-        }
-    }
-
-    // 페이지 로딩 완료 및 동적 생성 타이밍에 맞춰 주기적으로 실행
-    cleanStreamlitCloudUI();
-    setInterval(cleanStreamlitCloudUI, 500);
-</script>
-""", height=0, width=0)
-
-
 # =========================================================
 # 3. Session State
 # =========================================================
@@ -393,7 +330,6 @@ if "search_query" not in st.session_state:
 
 if "highlight_query" not in st.session_state:
     st.session_state["highlight_query"] = ""
-
 
 # =========================================================
 # 4. General Helpers
@@ -407,12 +343,10 @@ def escape_like(value: str) -> str:
         .replace("_", "\\_")
     )
 
-
 def safe_text(value) -> str:
     if value is None or pd.isna(value):
         return ""
     return str(value)
-
 
 def clean_dataframe_nulls(df: pd.DataFrame) -> pd.DataFrame:
     df = df.copy()
@@ -420,7 +354,6 @@ def clean_dataframe_nulls(df: pd.DataFrame) -> pd.DataFrame:
         if col in df.columns:
             df[col] = df[col].fillna("")
     return df
-
 
 # =========================================================
 # 5. V.B.C.P Parser & Regex Preprocessor
@@ -432,7 +365,6 @@ def extract_vbc_conditions(query_str: str, prefix: str = "bt.") -> tuple[str, st
         return "", "", ""
 
     vbc_pattern = r'^(\d+\.\d+(?:\.[cC]?\d+){0,2})'
-    
     pipe_match = re.match(rf'{vbc_pattern}\|(.*)$', query, re.DOTALL)
     if pipe_match:
         vbc_raw = pipe_match.group(1)
@@ -450,7 +382,6 @@ def extract_vbc_conditions(query_str: str, prefix: str = "bt.") -> tuple[str, st
 
     return " AND ".join(conditions), clean_query, ".".join(parts_clean)
 
-
 def sanitize_regex_pattern(pattern: str) -> str:
     pattern = (pattern or "").strip()
     while pattern.endswith("|"):
@@ -459,9 +390,7 @@ def sanitize_regex_pattern(pattern: str) -> str:
     pattern = re.sub(r'(?<![\.\\])\*', r'.*', pattern)
     pattern = re.sub(r'(?<!\\)\.\*', r'[^.?!]*', pattern)
     pattern = re.sub(r'(?<!\\)\.\+', r'[^.?!]+', pattern)
-
     return pattern
-
 
 # =========================================================
 # 6. Database Connection
@@ -469,8 +398,6 @@ def sanitize_regex_pattern(pattern: str) -> str:
 
 def get_db_connection(db_path: str, case_sensitive: bool = False):
     conn = sqlite3.connect(db_path)
-    
-    # Simple LIKE 검색 시 대소문자 구분 설정 반영
     if case_sensitive:
         conn.execute("PRAGMA case_sensitive_like = ON;")
     else:
@@ -489,7 +416,6 @@ def get_db_connection(db_path: str, case_sensitive: bool = False):
     conn.create_function("REGEXP", 2, regexp)
     return conn
 
-
 # =========================================================
 # 7. Database Search
 # =========================================================
@@ -504,7 +430,6 @@ def execute_search(
 ) -> tuple[pd.DataFrame, str, str]:
 
     range_cond, clean_query, _ = extract_vbc_conditions(query_str)
-
     conditions = []
     params = []
     effective_pattern = ""
@@ -513,7 +438,6 @@ def execute_search(
         conditions.append(range_cond)
 
     if clean_query:
-        # 단어 단위 일치(Whole Words Only) 옵션 처리
         if whole_words:
             base_pattern = re.escape(clean_query) if search_type == "simple" else sanitize_regex_pattern(clean_query)
             effective_pattern = rf"\b{base_pattern}\b"
@@ -542,26 +466,22 @@ def execute_search(
             A.vbcp AS "V.B.C.P",
             A.text_en AS "Source",
             A.text_ko AS "번역문",
-
             CASE
                 WHEN A.BookTitle != '' AND A.Chapter != '' THEN A.BookTitle || ', ' || A.Chapter
                 WHEN A.BookTitle != '' THEN A.BookTitle
                 WHEN A.Chapter != '' THEN A.Chapter
                 ELSE 'Volume ' || A.Volume || ' Book ' || A.BookNo
             END AS "Book, Chapter",
-
             CASE
                 WHEN A.BookTitle_ko != '' AND A.Chapter_ko != '' THEN A.BookTitle_ko || ', ' || A.Chapter_ko
                 WHEN A.BookTitle_ko != '' THEN A.BookTitle_ko
                 WHEN A.Chapter_ko != '' THEN A.Chapter_ko
                 ELSE A.Volume || '권 ' || A.BookNo || '책'
             END AS "책, 장",
-
             CASE 
                 WHEN v.url IS NOT NULL OR v.url_ko IS NOT NULL THEN '[en]' || COALESCE(v.url, '') || char(10) || '[ko]' || COALESCE(v.url_ko, '')
                 ELSE ''
             END AS "Link"
-
         FROM (
             SELECT
                 bt.Volume || '.' || COALESCE(bt.BookNo, '') || '.' ||
@@ -634,7 +554,6 @@ def execute_search(
 
     return clean_dataframe_nulls(df), clean_query, effective_pattern
 
-
 # =========================================================
 # 8. URL Formatter
 # =========================================================
@@ -648,11 +567,9 @@ def safe_url(url: str) -> str:
         pass
     return ""
 
-
 def parse_links_to_html(link_str: str) -> str:
     if not link_str or pd.isna(link_str):
         return ""
-
     html_links = []
     for line in str(link_str).split("\n"):
         line = line.strip()
@@ -662,9 +579,7 @@ def parse_links_to_html(link_str: str) -> str:
         elif line.startswith("[ko]"):
             url = safe_url(line[4:].strip())
             html_links.append(f'<a href="{html.escape(url, quote=True)}" target="_blank" rel="noopener noreferrer">ko</a>' if url else "ko")
-
     return "<br>".join(html_links)
-
 
 # =========================================================
 # 9. Regex Highlight Engine
@@ -683,7 +598,6 @@ def merge_ranges(ranges: list[tuple[int, int]]) -> list[tuple[int, int]]:
             merged.append((start, end))
     return merged
 
-
 def find_regex_ranges(text: str, pattern: str, case_sensitive: bool = False) -> list[tuple[int, int]]:
     if not text or not pattern:
         return []
@@ -692,10 +606,8 @@ def find_regex_ranges(text: str, pattern: str, case_sensitive: bool = False) -> 
         regex = re.compile(pattern, flags)
     except re.error:
         return []
-
     ranges = [(m.start(), m.end()) for m in regex.finditer(text) if m.end() > m.start()]
     return merge_ranges(ranges)
-
 
 def render_highlighted_text(
     text: str,
@@ -704,7 +616,6 @@ def render_highlighted_text(
 ) -> str:
     if not text:
         return ""
-
     search_ranges = merge_ranges(search_ranges)
     keyword_ranges = merge_ranges(keyword_ranges)
 
@@ -733,7 +644,6 @@ def render_highlighted_text(
 
     return "".join(output)
 
-
 def get_keyword_ranges(text: str, keywords: list[str]) -> tuple[list[tuple[int, int]], dict]:
     ranges = []
     freq_map = {}
@@ -745,7 +655,6 @@ def get_keyword_ranges(text: str, keywords: list[str]) -> tuple[list[tuple[int, 
             regex = re.compile(re.escape(keyword), re.IGNORECASE)
         except re.error:
             continue
-
         matches = list(regex.finditer(text))
         if matches:
             freq_map[keyword.lower()] = freq_map.get(keyword.lower(), 0) + len(matches)
@@ -755,7 +664,6 @@ def get_keyword_ranges(text: str, keywords: list[str]) -> tuple[list[tuple[int, 
 
     return merge_ranges(ranges), freq_map
 
-
 def apply_highlights_and_format(
     df: pd.DataFrame,
     search_pattern: str,
@@ -764,10 +672,7 @@ def apply_highlights_and_format(
 ):
     df_display = clean_dataframe_nulls(df.copy())
     freq_map = {}
-
     keywords = [k.strip() for k in (highlight_keywords_str or "").split(",") if k.strip()]
-
-    # 각 행마다 추가 키워드가 총 몇 번 나왔는지 세는 카운터 열 추가
     row_keyword_counts = [0] * len(df_display)
 
     for column in ["Source", "번역문"]:
@@ -784,11 +689,9 @@ def apply_highlights_and_format(
             search_ranges = find_regex_ranges(text, search_pattern, case_sensitive) if search_pattern else []
             keyword_ranges, keyword_freq = get_keyword_ranges(text, keywords)
 
-            # 행별 추가 키워드 매칭 개수 누적
             match_count = sum(keyword_freq.values())
             row_keyword_counts[idx] += match_count
 
-            # 전체 키워드 빈도 합산
             for key, count in keyword_freq.items():
                 freq_map[key] = freq_map.get(key, 0) + count
 
@@ -799,17 +702,14 @@ def apply_highlights_and_format(
     if "Link" in df_display.columns:
         df_display["Link"] = df_display["Link"].apply(parse_links_to_html)
 
-    # 추가 하이라이트 키워드가 입력된 경우: 매칭 횟수가 많은 행을 맨 위로 정렬 (내림차순)
     if keywords:
         df_display["_kw_priority"] = row_keyword_counts
-        # kind='stable'을 주어 등장 횟수가 같거나 0인 행들은 원래 책·장·절 순서 유지
         df_display = df_display.sort_values(by="_kw_priority", ascending=False, kind="stable").drop(columns=["_kw_priority"])
 
     sorted_freq = sorted(freq_map.items(), key=lambda x: x[1], reverse=True)
     freq_summary = ", ".join(f"{kw}({cnt})" for kw, cnt in sorted_freq)
 
     return df_display, freq_summary
-
 
 # =========================================================
 # 10. Custom Table Generator
@@ -842,7 +742,6 @@ def generate_custom_table_html(df: pd.DataFrame) -> str:
     html_parts.append("</tbody></table></div>")
     return "".join(html_parts)
 
-
 # =========================================================
 # 11. Main App
 # =========================================================
@@ -859,7 +758,6 @@ def main():
         format_func=lambda x: "Regex (정규식)" if x == "regex" else "Simple (기본)"
     )
 
-    # 검색 세부 옵션 체크박스
     case_sensitive = st.sidebar.checkbox("대소문자 구분 (Case-Sensitive)", value=False)
     whole_words = st.sidebar.checkbox("단어 단위 일치 (Whole Words Only)", value=False)
 
