@@ -1,12 +1,16 @@
 """
-NMG SQLite3 Streamlit Search Application (v5.5 Stable)
+NMG SQLite3 Streamlit Search Application (v5.4 Stable)
 --------------------------------------------------------------------
-- 안정적인 DB 병합 및 안전 검사
-- 완전 무결한 다크모드 및 사이드바 토글 복원
+- 언어 선택 메뉴 제거 (en, ko 통합 자동 검색)
+- 대소문자 구분 및 단어 단위 일치 옵션 적용
+- 추가 하이라이트 키워드 입력 시 일치 행 상단 정렬
+- 암호 입력창 제거 및 안정적인 기본 레이아웃
 """
 
 import os
 import re
+import io
+import time
 import sqlite3
 import html
 from datetime import datetime
@@ -15,20 +19,13 @@ from urllib.parse import urlparse
 import pandas as pd
 import streamlit as st
 
-# =========================================================
-# 0. Safe DB Reassembly
-# =========================================================
-
-DB_DEFAULT_PATH = "./nmg.db"
-
-# DB 파일이 없거나 크기가 0이면 파트 파일에서 온전하게 다시 병합
-if (not os.path.exists(DB_DEFAULT_PATH) or os.path.getsize(DB_DEFAULT_PATH) == 0):
-    if os.path.exists("./nmg.db.part1"):
-        with open(DB_DEFAULT_PATH, "wb") as f_out:
-            for part in ["./nmg.db.part1", "./nmg.db.part2"]:
-                if os.path.exists(part):
-                    with open(part, "rb") as f_in:
-                        f_out.write(f_in.read())
+# 분할 업로드된 DB 파일이 있으면 자동으로 하나로 합침
+if not os.path.exists("./nmg.db") and os.path.exists("./nmg.db.part1"):
+    with open("./nmg.db", "wb") as f_out:
+        for part in ["./nmg.db.part1", "./nmg.db.part2"]:
+            if os.path.exists(part):
+                with open(part, "rb") as f_in:
+                    f_out.write(f_in.read())
 
 # =========================================================
 # 1. Page Configuration
@@ -38,13 +35,15 @@ st.set_page_config(
     page_title="NMG Search System (Streamlit)",
     page_icon="text-search.svg",
     layout="wide",
-    initial_sidebar_state="collapsed"
+    initial_sidebar_state="expanded"
 )
+
 
 # =========================================================
 # 2. Custom CSS & Header Layout
 # =========================================================
 
+DB_DEFAULT_PATH = "./nmg.db"
 if os.path.exists(DB_DEFAULT_PATH):
     mtime = os.path.getmtime(DB_DEFAULT_PATH)
     updated_str = datetime.fromtimestamp(mtime).strftime('%Y-%m-%d %H:%M:%S')
@@ -53,7 +52,7 @@ else:
 
 header_html = """
 <style>
-/* 1. 글로벌 다크 스타일 */
+/* 1. 글로벌 기본 다크 스타일 */
 html, body, [class*="css"], .stApp {
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI",
                  Roboto, "Helvetica Neue", Arial, "Noto Sans KR",
@@ -66,62 +65,82 @@ html, body, [class*="css"], .stApp {
 div[data-testid="stStatusWidget"],
 footer,
 div[data-testid="InputInstructions"] {
+    visibility: hidden !important;
     display: none !important;
 }
 
-/* 2. 상단 헤더: 배경 투명화 및 안전한 버튼 노출 */
+/* 2. 헤더 바 및 기본 설정 */
 header[data-testid="stHeader"] {
     background-color: #111827 !important;
-    z-index: 100 !important;
+    z-index: 1000000 !important;
 }
 
-/* Share, GitHub 등 불필요한 액션 메뉴만 콕 집어서 숨김 */
-header[data-testid="stHeader"] [data-testid="stHeaderActionElements"],
-header[data-testid="stHeader"] .stAppDeployButton,
-.stDeployButton {
+.stDeployButton,
+header[data-testid="stHeader"] .stAppDeployButton {
+    visibility: hidden !important;
     display: none !important;
 }
 
-/* 사이드바 토글 버튼 (화살표 >) 및 점 3개 메뉴 무조건 노출 */
-[data-testid="stSidebarCollapsedControl"],
-[data-testid="collapsedControl"],
-[data-testid="stSidebarCollapseButton"],
-#MainMenu {
-    display: flex !important;
-    visibility: visible !important;
-    z-index: 999999 !important;
-    color: #E5E7EB !important;
-    opacity: 1 !important;
+/* 3. 사이드바 스타일 */
+section[data-testid="stSidebar"] {
+    background-color: #1F2937 !important;
+    border-right: 1px solid #374151 !important;
+    z-index: 1000005 !important;
 }
 
-/* 3. 중앙 타이틀: DOM 충돌을 피하기 위해 인라인 블록으로 안전하게 배치 */
-.app-title-container {
-    text-align: center;
-    margin-top: -35px;
-    margin-bottom: 20px;
+section[data-testid="stSidebar"] *,
+section[data-testid="stSidebar"] label,
+section[data-testid="stSidebar"] span,
+section[data-testid="stSidebar"] p,
+section[data-testid="stSidebar"] h1,
+section[data-testid="stSidebar"] h2,
+section[data-testid="stSidebar"] h3 {
+    color: #D1D5DB !important;
+}
+
+/* 4. 중앙 타이틀 및 우측 상단 Date Updated */
+.custom-header-bar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3.5rem;
+    background-color: transparent;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000001;
+    pointer-events: none;
 }
 
 .custom-header-title-text {
-    font-size: 1.35rem;
+    font-size: 1.25rem;
     font-weight: 700;
     color: #E5E7EB;
     letter-spacing: -0.02em;
-    display: inline-block;
+    pointer-events: auto;
 }
 
 .header-date-updated {
+    position: fixed;
+    top: 14px;
+    right: 60px;
     font-size: 11px;
     color: #9CA3AF;
-    margin-top: 4px;
+    z-index: 1000005;
+    pointer-events: none;
+    font-family: inherit;
 }
 
 .block-container {
-    padding-top: 4rem !important;
-    padding-bottom: 2rem !important;
+    padding-top: 4.5rem !important;
+    padding-bottom: 1.5rem !important;
+    padding-left: 1.5rem !important;
+    padding-right: 1.5rem !important;
     max-width: 98% !important;
 }
 
-/* 4. 검색창 및 입력 UI */
+/* 5. 메인 검색 입력창 전폭 사용 */
 .main div[data-testid="stTextInput"],
 .main div[data-testid="stTextInput"] > div,
 .main div[data-baseweb="input"],
@@ -132,6 +151,7 @@ header[data-testid="stHeader"] .stAppDeployButton,
     border-radius: 0.375rem !important;
     height: 42px !important;
     padding: 0 !important;
+    box-sizing: border-box !important;
 }
 
 .main div[data-baseweb="base-input"] {
@@ -148,13 +168,19 @@ header[data-testid="stHeader"] .stAppDeployButton,
     height: 100% !important;
     padding: 0 12px !important;
     border: none !important;
+    box-shadow: none !important;
 }
 
 .main div[data-baseweb="input"]:focus-within {
     border-color: #60A5FA !important;
 }
 
-/* 5. 결과 테이블 스타일 */
+.main .stTextInput input::placeholder {
+    color: #9CA3AF !important;
+    -webkit-text-fill-color: #9CA3AF !important;
+}
+
+/* 6. 결과 테이블 스타일 */
 .freq-info-box {
     background-color: #1F2937;
     border: 1px solid #374151;
@@ -226,13 +252,16 @@ header[data-testid="stHeader"] .stAppDeployButton,
 .col-vbcp {
     width: 7%;
     font-size: 11.5px;
+    font-family: inherit !important;
     color: #9CA3AF;
     text-align: center !important;
+    white-space: normal !important;
     word-break: break-all !important;
 }
 
 .col-main {
     width: 28%;
+    min-width: 0;
     font-size: 13px;
     color: #E5E7EB;
 }
@@ -256,13 +285,16 @@ header[data-testid="stHeader"] .stAppDeployButton,
 }
 </style>
 
-<div class="app-title-container">
+<div class="custom-header-bar">
     <div class="custom-header-title-text">NMG Search System</div>
-    <div class="header-date-updated">Date Updated: <strong>__UPDATED_STR__</strong></div>
+</div>
+<div class="header-date-updated">
+    Date Updated: <strong>__UPDATED_STR__</strong>
 </div>
 """.replace("__UPDATED_STR__", updated_str)
 
 st.markdown(header_html, unsafe_allow_html=True)
+
 # =========================================================
 # 3. Session State
 # =========================================================
@@ -272,6 +304,7 @@ if "search_query" not in st.session_state:
 
 if "highlight_query" not in st.session_state:
     st.session_state["highlight_query"] = ""
+
 
 # =========================================================
 # 4. General Helpers
@@ -285,10 +318,12 @@ def escape_like(value: str) -> str:
         .replace("_", "\\_")
     )
 
+
 def safe_text(value) -> str:
     if value is None or pd.isna(value):
         return ""
     return str(value)
+
 
 def clean_dataframe_nulls(df: pd.DataFrame) -> pd.DataFrame:
     df = df.copy()
@@ -296,6 +331,7 @@ def clean_dataframe_nulls(df: pd.DataFrame) -> pd.DataFrame:
         if col in df.columns:
             df[col] = df[col].fillna("")
     return df
+
 
 # =========================================================
 # 5. V.B.C.P Parser & Regex Preprocessor
@@ -307,6 +343,7 @@ def extract_vbc_conditions(query_str: str, prefix: str = "bt.") -> tuple[str, st
         return "", "", ""
 
     vbc_pattern = r'^(\d+\.\d+(?:\.[cC]?\d+){0,2})'
+    
     pipe_match = re.match(rf'{vbc_pattern}\|(.*)$', query, re.DOTALL)
     if pipe_match:
         vbc_raw = pipe_match.group(1)
@@ -324,6 +361,7 @@ def extract_vbc_conditions(query_str: str, prefix: str = "bt.") -> tuple[str, st
 
     return " AND ".join(conditions), clean_query, ".".join(parts_clean)
 
+
 def sanitize_regex_pattern(pattern: str) -> str:
     pattern = (pattern or "").strip()
     while pattern.endswith("|"):
@@ -332,7 +370,9 @@ def sanitize_regex_pattern(pattern: str) -> str:
     pattern = re.sub(r'(?<![\.\\])\*', r'.*', pattern)
     pattern = re.sub(r'(?<!\\)\.\*', r'[^.?!]*', pattern)
     pattern = re.sub(r'(?<!\\)\.\+', r'[^.?!]+', pattern)
+
     return pattern
+
 
 # =========================================================
 # 6. Database Connection
@@ -340,6 +380,7 @@ def sanitize_regex_pattern(pattern: str) -> str:
 
 def get_db_connection(db_path: str, case_sensitive: bool = False):
     conn = sqlite3.connect(db_path)
+    
     if case_sensitive:
         conn.execute("PRAGMA case_sensitive_like = ON;")
     else:
@@ -358,6 +399,7 @@ def get_db_connection(db_path: str, case_sensitive: bool = False):
     conn.create_function("REGEXP", 2, regexp)
     return conn
 
+
 # =========================================================
 # 7. Database Search
 # =========================================================
@@ -372,6 +414,7 @@ def execute_search(
 ) -> tuple[pd.DataFrame, str, str]:
 
     range_cond, clean_query, _ = extract_vbc_conditions(query_str)
+
     conditions = []
     params = []
     effective_pattern = ""
@@ -408,22 +451,26 @@ def execute_search(
             A.vbcp AS "V.B.C.P",
             A.text_en AS "Source",
             A.text_ko AS "번역문",
+
             CASE
                 WHEN A.BookTitle != '' AND A.Chapter != '' THEN A.BookTitle || ', ' || A.Chapter
                 WHEN A.BookTitle != '' THEN A.BookTitle
                 WHEN A.Chapter != '' THEN A.Chapter
                 ELSE 'Volume ' || A.Volume || ' Book ' || A.BookNo
             END AS "Book, Chapter",
+
             CASE
                 WHEN A.BookTitle_ko != '' AND A.Chapter_ko != '' THEN A.BookTitle_ko || ', ' || A.Chapter_ko
                 WHEN A.BookTitle_ko != '' THEN A.BookTitle_ko
                 WHEN A.Chapter_ko != '' THEN A.Chapter_ko
                 ELSE A.Volume || '권 ' || A.BookNo || '책'
             END AS "책, 장",
+
             CASE 
                 WHEN v.url IS NOT NULL OR v.url_ko IS NOT NULL THEN '[en]' || COALESCE(v.url, '') || char(10) || '[ko]' || COALESCE(v.url_ko, '')
                 ELSE ''
             END AS "Link"
+
         FROM (
             SELECT
                 bt.Volume || '.' || COALESCE(bt.BookNo, '') || '.' ||
@@ -496,6 +543,7 @@ def execute_search(
 
     return clean_dataframe_nulls(df), clean_query, effective_pattern
 
+
 # =========================================================
 # 8. URL Formatter
 # =========================================================
@@ -509,9 +557,11 @@ def safe_url(url: str) -> str:
         pass
     return ""
 
+
 def parse_links_to_html(link_str: str) -> str:
     if not link_str or pd.isna(link_str):
         return ""
+
     html_links = []
     for line in str(link_str).split("\n"):
         line = line.strip()
@@ -521,7 +571,9 @@ def parse_links_to_html(link_str: str) -> str:
         elif line.startswith("[ko]"):
             url = safe_url(line[4:].strip())
             html_links.append(f'<a href="{html.escape(url, quote=True)}" target="_blank" rel="noopener noreferrer">ko</a>' if url else "ko")
+
     return "<br>".join(html_links)
+
 
 # =========================================================
 # 9. Regex Highlight Engine
@@ -540,6 +592,7 @@ def merge_ranges(ranges: list[tuple[int, int]]) -> list[tuple[int, int]]:
             merged.append((start, end))
     return merged
 
+
 def find_regex_ranges(text: str, pattern: str, case_sensitive: bool = False) -> list[tuple[int, int]]:
     if not text or not pattern:
         return []
@@ -548,8 +601,10 @@ def find_regex_ranges(text: str, pattern: str, case_sensitive: bool = False) -> 
         regex = re.compile(pattern, flags)
     except re.error:
         return []
+
     ranges = [(m.start(), m.end()) for m in regex.finditer(text) if m.end() > m.start()]
     return merge_ranges(ranges)
+
 
 def render_highlighted_text(
     text: str,
@@ -558,6 +613,7 @@ def render_highlighted_text(
 ) -> str:
     if not text:
         return ""
+
     search_ranges = merge_ranges(search_ranges)
     keyword_ranges = merge_ranges(keyword_ranges)
 
@@ -586,6 +642,7 @@ def render_highlighted_text(
 
     return "".join(output)
 
+
 def get_keyword_ranges(text: str, keywords: list[str]) -> tuple[list[tuple[int, int]], dict]:
     ranges = []
     freq_map = {}
@@ -597,6 +654,7 @@ def get_keyword_ranges(text: str, keywords: list[str]) -> tuple[list[tuple[int, 
             regex = re.compile(re.escape(keyword), re.IGNORECASE)
         except re.error:
             continue
+
         matches = list(regex.finditer(text))
         if matches:
             freq_map[keyword.lower()] = freq_map.get(keyword.lower(), 0) + len(matches)
@@ -606,6 +664,7 @@ def get_keyword_ranges(text: str, keywords: list[str]) -> tuple[list[tuple[int, 
 
     return merge_ranges(ranges), freq_map
 
+
 def apply_highlights_and_format(
     df: pd.DataFrame,
     search_pattern: str,
@@ -614,6 +673,7 @@ def apply_highlights_and_format(
 ):
     df_display = clean_dataframe_nulls(df.copy())
     freq_map = {}
+
     keywords = [k.strip() for k in (highlight_keywords_str or "").split(",") if k.strip()]
     row_keyword_counts = [0] * len(df_display)
 
@@ -653,6 +713,7 @@ def apply_highlights_and_format(
 
     return df_display, freq_summary
 
+
 # =========================================================
 # 10. Custom Table Generator
 # =========================================================
@@ -684,6 +745,7 @@ def generate_custom_table_html(df: pd.DataFrame) -> str:
     html_parts.append("</tbody></table></div>")
     return "".join(html_parts)
 
+
 # =========================================================
 # 11. Main App
 # =========================================================
@@ -714,14 +776,14 @@ def main():
     query_input = st.text_input(
         "검색어",
         key="search_query",
-        placeholder="한 문장 내에 떨어져 있는 두 단어 이상 검색할 때는 사이에 별표(예: reclaim*knowledge)",
+        placeholder="검색어를 입력하고 Enter를 누르세요 (예: 1.11.1 / 1.11.c1 / Step 1 / love*peace)",
         label_visibility="collapsed"
     )
 
     highlight_input = st.text_input(
         "추가 하이라이트 키워드",
         key="highlight_query",
-        placeholder="추가 하이라이트, 두 단어 이상일 경우는 사이에 쉼표(예: 분리,복원)",
+        placeholder="추가 하이라이트 키워드 (쉼표 ',' 구분)",
         label_visibility="collapsed"
     )
 
