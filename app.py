@@ -796,14 +796,14 @@ def main():
     query_input = st.text_input(
         "검색어",
         key="search_query",
-        placeholder="검색, 한 문장 내에 떨어져 있는 두 단어 이상 검색할 때는 사이에 별표(예: reclaim*knowledge)",
+        placeholder="검색, 떨어져 있는 단어들을 찾을 때는 사이에 별표(예: love*peace)",
         label_visibility="collapsed"
     )
 
     highlight_input = st.text_input(
         "추가 하이라이트 키워드",
         key="highlight_query",
-        placeholder="추가 하이라이트, 두 단어 이상일 경우는 사이에 쉼표(예: 분리,복원)",
+        placeholder="추가 하이라이트, 두 단어 이상일 때는 사이에 쉼표(예: 사랑,평화)",
         label_visibility="collapsed"
     )
 
