@@ -53,7 +53,7 @@ else:
 
 header_html = """
 <style>
-/* 글로벌 다크 스타일 */
+/* 1. 글로벌 다크 스타일 */
 html, body, [class*="css"], .stApp {
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI",
                  Roboto, "Helvetica Neue", Arial, "Noto Sans KR",
@@ -69,93 +69,59 @@ div[data-testid="InputInstructions"] {
     display: none !important;
 }
 
-/* 상단 헤더 바 */
+/* 2. 상단 헤더: 배경 투명화 및 안전한 버튼 노출 */
 header[data-testid="stHeader"] {
     background-color: #111827 !important;
-    z-index: 1000 !important;
+    z-index: 100 !important;
 }
 
-/* 상단 부가 요소 숨김 */
-.stDeployButton,
-header[data-testid="stHeader"] .stAppDeployButton,
+/* Share, GitHub 등 불필요한 액션 메뉴만 콕 집어서 숨김 */
 header[data-testid="stHeader"] [data-testid="stHeaderActionElements"],
-header[data-testid="stHeader"] [data-testid="stToolbarActions"],
-header[data-testid="stHeader"] [data-testid="stToolbar"] {
+header[data-testid="stHeader"] .stAppDeployButton,
+.stDeployButton {
     display: none !important;
 }
 
-/* 사이드바 열기(>) 화살표 및 점3개(⋮) 버튼 강제 표시 */
-div[data-testid="stSidebarCollapsedControl"],
-div[data-testid="collapsedControl"],
-button[data-testid="stSidebarCollapseButton"],
-#MainMenu,
-header[data-testid="stHeader"] button {
-    display: inline-flex !important;
+/* 사이드바 토글 버튼 (화살표 >) 및 점 3개 메뉴 무조건 노출 */
+[data-testid="stSidebarCollapsedControl"],
+[data-testid="collapsedControl"],
+[data-testid="stSidebarCollapseButton"],
+#MainMenu {
+    display: flex !important;
     visibility: visible !important;
-    z-index: 2000 !important;
+    z-index: 999999 !important;
     color: #E5E7EB !important;
-    pointer-events: auto !important;
+    opacity: 1 !important;
 }
 
-div[data-testid="stSidebarCollapsedControl"] svg,
-header[data-testid="stHeader"] svg {
-    fill: #E5E7EB !important;
-    color: #E5E7EB !important;
-}
-
-/* 사이드바 배경 */
-section[data-testid="stSidebar"] {
-    background-color: #1F2937 !important;
-    border-right: 1px solid #374151 !important;
-}
-
-section[data-testid="stSidebar"] * {
-    color: #D1D5DB !important;
-}
-
-/* 중앙 타이틀 */
-.custom-header-bar {
-    position: fixed;
-    top: 0;
-    left: 80px;
-    right: 80px;
-    height: 3.5rem;
-    background-color: transparent;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 1001;
-    pointer-events: none;
+/* 3. 중앙 타이틀: DOM 충돌을 피하기 위해 인라인 블록으로 안전하게 배치 */
+.app-title-container {
+    text-align: center;
+    margin-top: -35px;
+    margin-bottom: 20px;
 }
 
 .custom-header-title-text {
-    font-size: 1.25rem;
+    font-size: 1.35rem;
     font-weight: 700;
     color: #E5E7EB;
     letter-spacing: -0.02em;
-    pointer-events: none;
+    display: inline-block;
 }
 
 .header-date-updated {
-    position: fixed;
-    top: 14px;
-    right: 60px;
     font-size: 11px;
     color: #9CA3AF;
-    z-index: 1002;
-    pointer-events: none;
-    font-family: inherit;
+    margin-top: 4px;
 }
 
 .block-container {
-    padding-top: 4.5rem !important;
-    padding-bottom: 1.5rem !important;
-    padding-left: 1.5rem !important;
-    padding-right: 1.5rem !important;
+    padding-top: 4rem !important;
+    padding-bottom: 2rem !important;
     max-width: 98% !important;
 }
 
-/* 검색 입력창 */
+/* 4. 검색창 및 입력 UI */
 .main div[data-testid="stTextInput"],
 .main div[data-testid="stTextInput"] > div,
 .main div[data-baseweb="input"],
@@ -166,7 +132,6 @@ section[data-testid="stSidebar"] * {
     border-radius: 0.375rem !important;
     height: 42px !important;
     padding: 0 !important;
-    box-sizing: border-box !important;
 }
 
 .main div[data-baseweb="base-input"] {
@@ -183,33 +148,13 @@ section[data-testid="stSidebar"] * {
     height: 100% !important;
     padding: 0 12px !important;
     border: none !important;
-    box-shadow: none !important;
 }
 
 .main div[data-baseweb="input"]:focus-within {
     border-color: #60A5FA !important;
 }
 
-.main .stTextInput input::placeholder {
-    color: #9CA3AF !important;
-    -webkit-text-fill-color: #9CA3AF !important;
-}
-
-/* 드롭다운 */
-div[data-baseweb="select"],
-div[data-baseweb="select"] > div {
-    background-color: #374151 !important;
-    border-color: #4B5563 !important;
-    color: #E5E7EB !important;
-    border-radius: 0.375rem !important;
-}
-
-div[data-baseweb="select"] * {
-    color: #E5E7EB !important;
-    -webkit-text-fill-color: #E5E7EB !important;
-}
-
-/* 하이라이트 및 테이블 */
+/* 5. 결과 테이블 스타일 */
 .freq-info-box {
     background-color: #1F2937;
     border: 1px solid #374151;
@@ -311,16 +256,13 @@ div[data-baseweb="select"] * {
 }
 </style>
 
-<div class="custom-header-bar">
+<div class="app-title-container">
     <div class="custom-header-title-text">NMG Search System</div>
-</div>
-<div class="header-date-updated">
-    Date Updated: <strong>__UPDATED_STR__</strong>
+    <div class="header-date-updated">Date Updated: <strong>__UPDATED_STR__</strong></div>
 </div>
 """.replace("__UPDATED_STR__", updated_str)
 
 st.markdown(header_html, unsafe_allow_html=True)
-
 # =========================================================
 # 3. Session State
 # =========================================================
