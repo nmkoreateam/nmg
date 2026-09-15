@@ -37,9 +37,8 @@ st.set_page_config(
     page_title="NMG Search System (Streamlit)",
     page_icon="text-search.svg",
     layout="wide",
-    initial_sidebar_state="expanded"
+    initial_sidebar_state="collapsed"   # 기존 "expanded"에서 "collapsed"로 변경
 )
-
 
 # =========================================================
 # 2. Custom CSS & Header Layout
@@ -71,43 +70,44 @@ div[data-testid="InputInstructions"] {
     display: none !important;
 }
 
-/* 2. 헤더 바 및 불필요한 아이콘 숨김 (점 세 개 메뉴만 단독 보존) */
+/* 2. 상단 헤더 바 */
 header[data-testid="stHeader"] {
     background-color: #111827 !important;
     z-index: 1000000 !important;
 }
 
-/* Share 버튼 및 Deploy 버튼 숨김 */
+/* 불필요한 버튼/아이콘 숨김 */
 .stDeployButton,
-header[data-testid="stHeader"] .stAppDeployButton {
-    visibility: hidden !important;
-    display: none !important;
-}
-
-/* 별, 연필, 깃허브 아이콘 컨테이너 강제 숨김 */
+header[data-testid="stHeader"] .stAppDeployButton,
 header[data-testid="stHeader"] [data-testid="stHeaderActionElements"],
-header[data-testid="stHeader"] [data-testid="stToolbarActions"],
-header[data-testid="stHeader"] .st-emotion-cache-15ecox0,
-header[data-testid="stHeader"] .st-emotion-cache-zq5wmm,
-header[data-testid="stHeader"] a:has(svg),
-header[data-testid="stHeader"] div:has(> a[href*="github.com"]) {
+div[data-testid="manage-app-button"],
+div[data-testid="stConnectionStatus"],
+[class*="viewerBadge"],
+[class*="manageApp"] {
     visibility: hidden !important;
     display: none !important;
 }
 
-/* 점 세 개(⋮) 메뉴 버튼만 명시적 표시 */
-#MainMenu,
-header[data-testid="stHeader"] button[data-testid="baseButton-headerNoPadding"],
+/* 사이드바 열기/닫기(>) 버튼 & 점 세 개(⋮) 메뉴를 최상위 레이어로 강제 노출 */
 div[data-testid="stSidebarCollapsedControl"],
-button[data-testid="stSidebarCollapseButton"] {
+div[data-testid="collapsedControl"],
+button[data-testid="stSidebarCollapseButton"],
+#MainMenu,
+header[data-testid="stHeader"] button {
     visibility: visible !important;
     display: inline-flex !important;
+    z-index: 2000000 !important;
     color: #E5E7EB !important;
+    pointer-events: auto !important;
 }
 
-header[data-testid="stHeader"] button[data-testid="baseButton-headerNoPadding"] svg {
+div[data-testid="stSidebarCollapsedControl"] svg,
+div[data-testid="collapsedControl"] svg,
+header[data-testid="stHeader"] svg {
     fill: #E5E7EB !important;
     color: #E5E7EB !important;
+    width: 1.5rem !important;
+    height: 1.5rem !important;
 }
 
 /* 3. 사이드바 스타일 */
@@ -127,12 +127,12 @@ section[data-testid="stSidebar"] h3 {
     color: #D1D5DB !important;
 }
 
-/* 4. 중앙 타이틀 및 우측 상단 Date Updated */
+/* 4. 중앙 타이틀: 좌우 60px 여백을 두어 화살표(>)와 점3개(⋮)를 가리지 않도록 설정 */
 .custom-header-bar {
     position: fixed;
     top: 0;
-    left: 0;
-    right: 0;
+    left: 60px;
+    right: 60px;
     height: 3.5rem;
     background-color: transparent;
     display: flex;
@@ -147,16 +147,16 @@ section[data-testid="stSidebar"] h3 {
     font-weight: 700;
     color: #E5E7EB;
     letter-spacing: -0.02em;
-    pointer-events: auto;
+    pointer-events: none;
 }
 
 .header-date-updated {
     position: fixed;
     top: 14px;
-    right: 60px;
+    right: 55px;
     font-size: 11px;
     color: #9CA3AF;
-    z-index: 1000005;
+    z-index: 1000002;
     pointer-events: none;
     font-family: inherit;
 }
@@ -169,7 +169,7 @@ section[data-testid="stSidebar"] h3 {
     max-width: 98% !important;
 }
 
-/* 5. 메인 검색 입력창 전폭 사용 */
+/* 5. 메인 검색 입력창 100% 전폭 사용 */
 .main div[data-testid="stTextInput"],
 .main div[data-testid="stTextInput"] > div,
 .main div[data-baseweb="input"],
@@ -337,7 +337,6 @@ div[data-baseweb="select"] * {
 """.replace("__UPDATED_STR__", updated_str)
 
 st.markdown(header_html, unsafe_allow_html=True)
-
 # =========================================================
 # 3. Session State
 # =========================================================
@@ -828,14 +827,14 @@ def main():
     query_input = st.text_input(
         "검색어",
         key="search_query",
-        placeholder="검색어를 입력하고 Enter를 누르세요 (예: 1.11.1 / 1.11.c1 / Step 1 / love*peace)",
+        placeholder="한 문장 내에 떨어져 있는 두 단어 이상 검색할 때는 사이에 별표(예: reclaim*knowledge)",
         label_visibility="collapsed"
     )
 
     highlight_input = st.text_input(
         "추가 하이라이트 키워드",
         key="highlight_query",
-        placeholder="추가 하이라이트 키워드 (쉼표 ',' 구분)",
+        placeholder="추가 하이라이트, 두 단어 이상일 경우는 사이에 쉼표(예: 분리,복원)",
         label_visibility="collapsed"
     )
 
