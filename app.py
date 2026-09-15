@@ -81,6 +81,26 @@ header[data-testid="stHeader"] .stAppDeployButton {
     display: none !important;
 }
 
+/* 방문자 화면의 Fork, GitHub 아이콘 및 상단 툴바 액션 컨테이너 숨김 */
+header[data-testid="stHeader"] [data-testid="stHeaderActionElements"],
+header[data-testid="stHeader"] [data-testid="stToolbarActions"],
+header[data-testid="stHeader"] a[href*="github.com"],
+header[data-testid="stHeader"] button[title*="Fork"],
+header[data-testid="stHeader"] button[aria-label*="Fork"] {
+    display: none !important;
+    visibility: hidden !important;
+}
+
+/* 점 세 개(⋮) 메뉴 버튼은 명시적으로 보존 */
+#MainMenu,
+header[data-testid="stHeader"] button[data-testid="baseButton-headerNoPadding"],
+div[data-testid="stSidebarCollapsedControl"],
+button[data-testid="stSidebarCollapseButton"] {
+    visibility: visible !important;
+    display: inline-flex !important;
+    color: #E5E7EB !important;
+}
+
 /* 3. 사이드바 스타일 */
 section[data-testid="stSidebar"] {
     background-color: #1F2937 !important;
