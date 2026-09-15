@@ -70,30 +70,52 @@ div[data-testid="InputInstructions"] {
     display: none !important;
 }
 
-/* 2. 상단 헤더 바 */
+/* 2. 상단 헤더 바 및 불필요한 아이콘 숨김 */
 header[data-testid="stHeader"] {
     background-color: #111827 !important;
     z-index: 1000000 !important;
 }
 
-/* 불필요한 버튼/아이콘 숨김 */
+/* 상단: Share 버튼, Deploy 버튼, 깃허브, 별, 연필 등 액션 컨테이너 전부 숨김 */
 .stDeployButton,
 header[data-testid="stHeader"] .stAppDeployButton,
 header[data-testid="stHeader"] [data-testid="stHeaderActionElements"],
-div[data-testid="manage-app-button"],
-div[data-testid="stConnectionStatus"],
-[class*="viewerBadge"],
-[class*="manageApp"] {
+header[data-testid="stHeader"] [data-testid="stToolbarActions"],
+header[data-testid="stHeader"] [data-testid="stToolbar"],
+header[data-testid="stHeader"] .st-emotion-cache-15ecox0,
+header[data-testid="stHeader"] .st-emotion-cache-zq5wmm,
+header[data-testid="stHeader"] a[href*="github.com"],
+header[data-testid="stHeader"] div:has(> a[href*="github.com"]),
+header[data-testid="stHeader"] button[aria-label="Share"],
+header[data-testid="stHeader"] button[title*="Share"],
+header[data-testid="stHeader"] button:not(#MainMenu):not([data-testid="baseButton-headerNoPadding"]):not([data-testid="stSidebarCollapseButton"]) {
     visibility: hidden !important;
     display: none !important;
 }
 
-/* 사이드바 열기/닫기(>) 버튼 & 점 세 개(⋮) 메뉴를 최상위 레이어로 강제 노출 */
+/* 하단: 호스팅 종이배 뱃지, 도트 프로필(관리 뷰어), 상태 위젯 전부 숨김 */
+footer,
+div[data-testid="manage-app-button"],
+div[data-testid="stConnectionStatus"],
+div[data-testid="stStatusWidget"],
+[class*="viewerBadge"],
+[class*="manageApp"],
+[class*="StatusWidget"],
+a[href*="streamlit.app"],
+a[href*="streamlit.io"],
+div:has(> a[href*="streamlit.io"]),
+div:has(> a[href*="streamlit.app"]) {
+    visibility: hidden !important;
+    display: none !important;
+}
+
+/* 점 세 개(⋮) 및 사이드바 화살표(>) 단독 보존 */
+#MainMenu,
+header[data-testid="stHeader"] #MainMenu,
 div[data-testid="stSidebarCollapsedControl"],
 div[data-testid="collapsedControl"],
 button[data-testid="stSidebarCollapseButton"],
-#MainMenu,
-header[data-testid="stHeader"] button {
+header[data-testid="stHeader"] button[data-testid="baseButton-headerNoPadding"] {
     visibility: visible !important;
     display: inline-flex !important;
     z-index: 2000000 !important;
@@ -106,10 +128,7 @@ div[data-testid="collapsedControl"] svg,
 header[data-testid="stHeader"] svg {
     fill: #E5E7EB !important;
     color: #E5E7EB !important;
-    width: 1.5rem !important;
-    height: 1.5rem !important;
 }
-
 /* 3. 사이드바 스타일 */
 section[data-testid="stSidebar"] {
     background-color: #1F2937 !important;
